@@ -286,20 +286,18 @@ body::after { content:''; position:fixed; inset:0; z-index:9999; pointer-events:
 // ══════════════════════════════════════════
 const HS_DATA = [
   {
-    id:1, label:"Logic Board (Block II)",
-    body:"An example of one of the logic boards from the main computer. The AGC was one of the first Integrated Circuit (IC) based computers.",
+    id:1, label:"Placa Lógica (Block II)",
+    body:"Un ejemplo de una de las placas lógicas de la computadora principal. El AGC fue una de las primeras computadoras basadas en Circuitos Integrados (IC).",
     pos:{x:-0.250,y:-4.031,z:0.251}, cam:{x:-0.121,y:-3.993,z:0.460}, tgt:{x:-0.267,y:-4.043,z:0.264}
   },
   {
-    id:2, label:"Apollo Guidance Computer",
-    body:"The main (internal) housing for the Apollo Guidance Computer. It had a 16 bit (15+1 parity bit) word length, ROM storage of ~32 kilowords, and a clock speed of 2.048MHz. Performance was comparable to early home computers such as the Apple II.",
+    id:2, label:"Computadora de Guía del Apollo",
+    body:"La carcasa principal (interna) de la Computadora de Guía del Apollo. Tenía una longitud de palabra de 16 bits (15 + 1 bit de paridad), almacenamiento ROM de ~32 kilowords y una velocidad de reloj de 2.048 MHz. Su rendimiento era comparable al de las primeras computadoras domésticas como la Apple II.",
     pos:{x:-0.041,y:-4.019,z:0.127}, cam:{x:-0.049,y:-3.173,z:0.095}, tgt:{x:-0.050,y:-3.422,z:0.075}
   },
   {
-    id:3, label:"Storage",
-    body:"Storage was based on a 'core rope' system — programs were hand woven into ferrite core magnetic threads (nicknamed LOL memory, for Little Old Lady memory). Memory density was ~2.5MB/sqm vs ~140KB/sqm for other formats of the era.",
-    pos:{x:0.102,y:-3.972,z:-0.018}, cam:{
-  x:0.599,
+    id:3, label:"Almacenamiento",
+    body:"El almacenamiento se basaba en un sistema de 'memoria de núcleos' — los programas eran tejidos a mano en hilos magnéticos de núcleo de ferrita (apodada 'memoria LOL', por Little Old Lady memory). La densidad de memoria era de ~2.5MB/m² frente a los ~140KB/m² de otros formatos de la época.",
   y:-3.718,
   z:0.169
 },
@@ -310,8 +308,9 @@ tgt:{
 }
   },
   {
-    id:4, label:"DSKEY Input Module",
-    body:"(pronounced Diss-key) This was how the Apollo crew communicated with the AGC. Commands were sent via 2-digit 'verb' and 'noun' numerals. The electroluminescent display showed attitude, delta-V vectors, and other flight data.",
+    id:4, label:"Módulo de Entrada DSKY",
+    body:"(pronunciado 'Diss-key') Así es como la tripulación del Apollo se comunicaba con el AGC. Los comandos se enviaban mediante numerales de 2 dígitos de 'verbo' y 'sustantivo'. La pantalla electroluminiscente mostraba la actitud, vectores de delta-V y otros datos de vuelo.",
+    pos: {x: 0.162, y: -3.965, z: 0.244},
     pos:{x:0.162,y:-3.965,z:0.244}, cam:{
   x:0.020,
   y:-3.811,
@@ -325,8 +324,8 @@ tgt:{
 }
   },
   {
-    id:5, label:"Calculator Pad",
-    body:"The DSKEY keypad was one of the first of its kind and pioneered the 'calculator style' input for computing devices — a design that influenced keyboards for decades.",
+    id:5, label:"Teclado Numérico",
+    body:"El teclado del DSKY fue uno de los primeros de su tipo y fue pionero en la entrada de estilo 'calculadora' para dispositivos informáticos, un diseño que influyó en los teclados durante décadas.",
     pos:{x:0.144,y:-4.026,z:0.266}, cam:{
   x:0.121,
   y:-3.994,
