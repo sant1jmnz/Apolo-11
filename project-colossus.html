@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Colossus — Apollo Guidance Computer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #000000;
+  --accent: #c8a96e;
+  --accent2: #4fc3f7;
+  --green: #00ff9d;
+  --text: #d4cfc7;
+  --dim: #4a5568;
+  --border: #1e2530;
+  --red: #ff3c3c;
+}
+
+html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; overflow:hidden; }
+
+/* ═══ BOOT ═══ */
+#boot {
+  position:fixed; inset:0; z-index:1000;
+  background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition: opacity .8s ease;
+}
+#boot.fade { opacity:0; pointer-events:none; }
+
+.boot-logo {
+  font-family:'Orbitron',monospace; font-weight:900;
+  font-size:clamp(24px,5vw,52px); letter-spacing:.3em; text-transform:uppercase;
+  color:var(--accent); text-shadow:0 0 60px rgba(200,169,110,.7),0 0 120px rgba(200,169,110,.3);
+  margin-bottom:6px; animation:fadeUp .8s ease both;
+}
+.boot-sub {
+  font-family:'Share Tech Mono',monospace; font-size:clamp(10px,1.4vw,13px);
+  letter-spacing:.22em; color:var(--dim); text-transform:uppercase;
+  margin-bottom:44px; animation:fadeUp .8s .15s ease both;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+
+.boot-term {
+  width:min(560px,88vw); background:rgba(0,0,0,.55);
+  border:1px solid var(--border); border-left:2px solid var(--green);
+  padding:18px 22px; margin-bottom:28px;
+  animation:fadeUp .8s .3s ease both;
+  max-height:200px; overflow:hidden;
+}
+.boot-line {
+  font-family:'Share Tech Mono',monospace; font-size:12px; line-height:2.1;
+  opacity:0; transition:opacity .15s; white-space:pre;
+}
+.boot-line.on { opacity:1; }
+.ok   { color:var(--green); }
+.warn { color:var(--accent); }
+
+.boot-prog-wrap { width:min(560px,88vw); margin-bottom:28px; animation:fadeUp .8s .3s ease both; }
+.boot-prog-bar  { height:2px; background:var(--border); overflow:hidden; }
+.boot-prog-fill { height:100%; background:var(--green); width:0; transition:width .15s linear; box-shadow:0 0 8px var(--green); }
+.boot-prog-lbl  { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); margin-top:6px; letter-spacing:.08em; }
+
+.boot-btn {
+  font-family:'Orbitron',monospace; font-weight:700; font-size:13px;
+  letter-spacing:.2em; text-transform:uppercase;
+  color:var(--bg); background:var(--accent); border:none;
+  padding:14px 52px; cursor:pointer;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  transition:background .2s, transform .15s;
+  animation:fadeUp .5s ease both;
+}
+.boot-btn:hover { background:#e8c98e; transform:scale(1.04); }
+
+/* ═══ HUD ═══ */
+#hud {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 28px;
+  background:linear-gradient(180deg,rgba(7,9,12,.97) 0%,transparent 100%);
+  pointer-events:none; opacity:0; transition:opacity .6s;
+}
+#hud.on { opacity:1; }
+.hud-logo { font-family:'Orbitron',monospace; font-weight:900; font-size:14px; letter-spacing:.22em; color:var(--accent); }
+.hud-sub  { font-size:10px; letter-spacing:.14em; color:var(--dim); }
+.hud-stat { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--green); display:flex; align-items:center; gap:8px; }
+.hud-dot  { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 50%{opacity:.3;transform:scale(.7)} }
+
+/* ═══ MODE TOGGLE ═══ */
+#modes {
+  position:fixed; top:60px; right:28px; z-index:200;
+  display:flex; opacity:0; transition:opacity .6s; pointer-events:none;
+}
+#modes.on { opacity:1; pointer-events:auto; }
+.mbtn {
+  font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.1em;
+  padding:7px 18px; border:1px solid var(--border); background:rgba(7,9,12,.85);
+  color:var(--dim); cursor:pointer; transition:all .2s; text-transform:uppercase;
+}
+.mbtn:first-child { border-right:none; clip-path:polygon(6px 0%,100% 0%,100% 100%,0% 100%); }
+.mbtn:last-child  { clip-path:polygon(0% 0%,calc(100%-6px) 0%,100% 100%,0% 100%); }
+.mbtn.on { background:rgba(200,169,110,.15); color:var(--accent); border-color:var(--accent); }
+
+/* ═══ CROSSHAIR ═══ */
+#xhair {
+  position:fixed; top:50%; left:50%; z-index:50;
+  transform:translate(-50%,-50%); width:22px; height:22px;
+  pointer-events:none; opacity:0; transition:opacity .3s;
+}
+#xhair.on { opacity:.55; }
+#xhair::before,#xhair::after { content:''; position:absolute; background:var(--accent2); }
+#xhair::before { width:100%; height:1px; top:50%; left:0; }
+#xhair::after  { width:1px; height:100%; left:50%; top:0; }
+
+/* ═══ CANVAS ═══ */
+#canvas { display:block; width:100vw; height:100vh; }
+
+/* ═══ HOTSPOTS ═══ */
+.hs {
+  position: fixed; 
+  z-index: 50; 
+  pointer-events: auto;
+  width: 30px; 
+  height: 30px; 
+  border-radius: 50%;
+  background: rgba(79, 195, 247, 0.1); 
+  border: 1.5px solid var(--accent2);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  cursor: pointer; 
+  transform: translate(-50%, -50%);
+  /* Mantenemos tus transiciones originales */
+  transition: background .2s, box-shadow .2s, transform .2s;
+}
+
+.hs:hover, .hs.on { 
+  background: rgba(79, 195, 247, 0.3); 
+  box-shadow: 0 0 18px rgba(79, 195, 247, 0.8); 
+  transform: translate(-50%, -50%) scale(1.18); 
+}
+
+.hs .n { 
+  font-family: 'Orbitron', monospace; 
+  font-weight: 700; 
+  font-size: 11px; 
+  color: var(--accent2); 
+}
+
+.hs::before {
+  content: ''; 
+  position: absolute; 
+  inset: -7px; 
+  border-radius: 50%;
+  border: 1px solid rgba(79, 195, 247, 0.2);
+  animation: ring 2.8s ease-in-out infinite;
+}
+
+/* ═══ PANEL ═══ */
+#panel {
+  position:fixed; bottom:32px; right:32px; z-index:200;
+  width:min(360px,calc(100vw - 48px));
+  background:rgba(7,9,12,.93); border:1px solid var(--border);
+  border-left:3px solid var(--accent); backdrop-filter:blur(14px);
+  padding:22px 24px; pointer-events:none;
+  opacity:0; transform:translateY(14px); transition:opacity .3s,transform .3s;
+}
+#panel.on { opacity:1; transform:none; pointer-events:auto; }
+.p-n { font-family:'Orbitron',monospace; font-size:10px; letter-spacing:.2em; color:var(--accent); margin-bottom:5px; }
+.p-t { font-family:'Orbitron',monospace; font-weight:700; font-size:15px; color:#fff; line-height:1.3; margin-bottom:12px; }
+.p-d { height:1px; background:var(--border); margin-bottom:14px; }
+.p-b { font-size:11.5px; line-height:1.8; color:var(--text); }
+.p-x { position:absolute; top:12px; right:14px; background:none; border:none; color:var(--dim); font-family:'Share Tech Mono',monospace; font-size:12px; cursor:pointer; padding:4px 8px; transition:color .2s; }
+.p-x:hover { color:var(--accent); }
+
+/* ═══ NAV DOTS ═══ */
+#nav {
+  position:fixed; top:50%; left:20px; z-index:100; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:12px;
+  opacity:0; transition:opacity .6s 1s; pointer-events:none;
+}
+#nav.on { opacity:1; pointer-events:auto; }
+.nd { width:7px; height:7px; border-radius:50%; background:var(--border); border:1px solid var(--dim); cursor:pointer; transition:all .25s; position:relative; }
+.nd:hover,.nd.on { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px rgba(200,169,110,.7); }
+.nd .nl { position:absolute; left:16px; top:50%; transform:translateY(-50%); font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--dim); white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .2s; }
+.nd:hover .nl { opacity:1; }
+
+/* ═══ HINT ═══ */
+#hint {
+  position:fixed; bottom:28px; left:28px; z-index:100;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  letter-spacing:.07em; color:var(--dim); line-height:2.2;
+  pointer-events:none; opacity:0; transition:opacity .6s .8s;
+}
+#hint.on { opacity:1; }
+#hint span { color:var(--accent); }
+.fly-hint { display:none; }
+#hint.fly .orb-hint { display:none; }
+#hint.fly .fly-hint { display:block; }
+
+/* ═══ CORNERS ═══ */
+.corn { position:fixed; z-index:100; width:36px; height:36px; pointer-events:none; opacity:0; transition:opacity .6s 1.2s; }
+.corn.on { opacity:1; }
+.c-tl{top:12px;left:12px} .c-tr{top:12px;right:12px;transform:scaleX(-1)} .c-bl{bottom:12px;left:12px;transform:scaleY(-1)} .c-br{bottom:12px;right:12px;transform:scale(-1)}
+.corn svg { display:block; }
+
+/* scanlines */
+body::after { content:''; position:fixed; inset:0; z-index:9999; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px); }
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-logo">Project Colossus</div>
+  <div class="boot-sub">Apollo Guidance Computer — Interactive Display</div>
+  <div class="boot-term" id="bterm"></div>
+  <div class="boot-prog-wrap">
+    <div class="boot-prog-bar"><div class="boot-prog-fill" id="bfill"></div></div>
+    <div class="boot-prog-lbl" id="blbl">INITIALIZING…</div>
+  </div>
+  <button class="boot-btn" id="bbtn" style="display:none" onclick="enterScene()">[ ENTER SIMULATION ]</button>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div><div class="hud-logo">Project Colossus</div><div class="hud-sub">Apollo Guidance Computer</div></div>
+  <div class="hud-stat"><div class="hud-dot"></div>SYSTEM ONLINE</div>
+</div>
+
+<!-- MODE TOGGLE -->
+<div id="modes">
+  <button class="mbtn on" id="borbit" onclick="setMode('orbit')">⊙ ORBIT</button>
+  <button class="mbtn"    id="bfly"   onclick="setMode('fly')">✦ FLY</button>
+</div>
+
+<!-- CROSSHAIR -->
+<div id="xhair"></div>
+
+<!-- CORNERS -->
+<div class="corn c-tl"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M2 18 L2 2 L18 2" stroke="#c8a96e" stroke-width="1.5" opacity=".4"/><circle cx="2" cy="2" r="2" fill="#c8a96e" opacity=".4"/></svg></div>
+<div class="corn c-tr"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M2 18 L2 2 L18 2" stroke="#c8a96e" stroke-width="1.5" opacity=".4"/><circle cx="2" cy="2" r="2" fill="#c8a96e" opacity=".4"/></svg></div>
+<div class="corn c-bl"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M2 18 L2 2 L18 2" stroke="#c8a96e" stroke-width="1.5" opacity=".4"/><circle cx="2" cy="2" r="2" fill="#c8a96e" opacity=".4"/></svg></div>
+<div class="corn c-br"><svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M2 18 L2 2 L18 2" stroke="#c8a96e" stroke-width="1.5" opacity=".4"/><circle cx="2" cy="2" r="2" fill="#c8a96e" opacity=".4"/></svg></div>
+
+<!-- CANVAS -->
+<canvas id="canvas"></canvas>
+
+<!-- HOTSPOTS -->
+<div id="hotspots"></div>
+
+<!-- INFO PANEL -->
+<div id="panel">
+  <button class="p-x" onclick="closePanel()">[ CLOSE ]</button>
+  <div class="p-n" id="pn"></div>
+  <div class="p-t" id="pt"></div>
+  <div class="p-d"></div>
+  <div class="p-b" id="pb"></div>
+</div>
+
+<!-- NAV -->
+<div id="nav"></div>
+
+<!-- HINT -->
+<div id="hint">
+  <div class="orb-hint"><span>CLICK</span> — Rotar</div>
+  <div class="orb-hint"><span>SCROLL</span> — Zoom</div>
+  <div class="orb-hint"><span>CLICK DERECHO</span> — Mover</div>
+  <div class="orb-hint"><span>● 1-5</span> — Ver componente</div>
+  <div class="fly-hint"><span>MOUSE</span> — Mirar</div>
+  <div class="fly-hint"><span>W / S</span> — Adelante / Atrás</div>
+  <div class="fly-hint"><span>A / D</span> — Izquierda / Derecha</div>
+  <div class="fly-hint"><span>ESPACIO</span> — Subir &nbsp; <span>Q</span> — Bajar</div>
+  <div class="fly-hint"><span>SHIFT</span> — Turbo &nbsp; <span>ESC</span> — Salir</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════
+// HOTSPOT DATA  (calibrated to model bounds)
+// X: -1.2→1.2  Y: -0.85→1.2  Z: -1.2→1.2
+// ══════════════════════════════════════════
+const HS_DATA = [
+  {
+    id:1, label:"Logic Board (Block II)",
+    body:"An example of one of the logic boards from the main computer. The AGC was one of the first Integrated Circuit (IC) based computers.",
+    pos:{x:-0.250,y:-4.031,z:0.251}, cam:{x:-0.121,y:-3.993,z:0.460}, tgt:{x:-0.267,y:-4.043,z:0.264}
+  },
+  {
+    id:2, label:"Apollo Guidance Computer",
+    body:"The main (internal) housing for the Apollo Guidance Computer. It had a 16 bit (15+1 parity bit) word length, ROM storage of ~32 kilowords, and a clock speed of 2.048MHz. Performance was comparable to early home computers such as the Apple II.",
+    pos:{x:-0.041,y:-4.019,z:0.127}, cam:{x:-0.049,y:-3.173,z:0.095}, tgt:{x:-0.050,y:-3.422,z:0.075}
+  },
+  {
+    id:3, label:"Storage",
+    body:"Storage was based on a 'core rope' system — programs were hand woven into ferrite core magnetic threads (nicknamed LOL memory, for Little Old Lady memory). Memory density was ~2.5MB/sqm vs ~140KB/sqm for other formats of the era.",
+    pos:{x:0.102,y:-3.972,z:-0.018}, cam:{
+  x:0.599,
+  y:-3.718,
+  z:0.169
+},
+tgt:{
+  x:0.062,
+  y:-4.063,
+  z:0.045
+}
+  },
+  {
+    id:4, label:"DSKEY Input Module",
+    body:"(pronounced Diss-key) This was how the Apollo crew communicated with the AGC. Commands were sent via 2-digit 'verb' and 'noun' numerals. The electroluminescent display showed attitude, delta-V vectors, and other flight data.",
+    pos:{x:0.162,y:-3.965,z:0.244}, cam:{
+  x:0.020,
+  y:-3.811,
+  z:0.642
+},
+
+tgt:{
+  x:0.175,
+  y:-4.037,
+  z:0.109
+}
+  },
+  {
+    id:5, label:"Calculator Pad",
+    body:"The DSKEY keypad was one of the first of its kind and pioneered the 'calculator style' input for computing devices — a design that influenced keyboards for decades.",
+    pos:{x:0.144,y:-4.026,z:0.266}, cam:{
+  x:0.121,
+  y:-3.994,
+  z:0.486
+},
+
+tgt:{
+  x:0.135,
+  y:-4.051,
+  z:0.039
+}
+  },
+];
+
+// ══════════════════════════════════════════
+// BOOT SEQUENCE
+// ══════════════════════════════════════════
+const BOOT_LINES = [
+  {t:"AGC BOOT ROM v2.048 — INITIALIZING…",       ms:200,  c:"warn"},
+  {t:"[ OK ] Memory subsystem…………………… 32 KW ROM", ms:520,  c:"ok"},
+  {t:"[ OK ] Integrated circuit stack……… 5600 ICs",ms:820,  c:"ok"},
+  {t:"[ OK ] DSKEY interface……………………… READY",     ms:1080, c:"ok"},
+  {t:"[ OK ] Navigation core………………………… 2.048 MHz",ms:1340, c:"ok"},
+  {t:"[ OK ] 3D model stream………………………… LOADED",    ms:1620, c:"ok"},
+  {t:"[ OK ] Simulation environment……… READY",     ms:1900, c:"ok"},
+  {t:"AWAITING CREW INPUT▌",                        ms:2200, c:""},
+];
+
+let modelReady = false;
+let bootSeqDone = false;
+
+function runBoot() {
+  const term = document.getElementById('bterm');
+  const fill = document.getElementById('bfill');
+  const lbl  = document.getElementById('blbl');
+  BOOT_LINES.forEach((l,i) => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'boot-line';
+      el.innerHTML = `<span class="${l.c}">${l.t}</span>`;
+      term.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('on'));
+      const p = Math.round((i+1)/BOOT_LINES.length*100);
+      fill.style.width = p+'%';
+      lbl.textContent = `BOOT SEQUENCE ${p}%`;
+      if (i === BOOT_LINES.length-1) { bootSeqDone=true; tryReady(); }
+    }, l.ms);
+  });
+}
+
+function tryReady() {
+  if (!bootSeqDone || !modelReady) return;
+  document.getElementById('blbl').textContent = 'READY — AGUARDANDO TRIPULACIÓN';
+  const btn = document.getElementById('bbtn');
+  btn.style.display = 'block';
+}
+
+function enterScene() {
+  document.getElementById('boot').classList.add('fade');
+  setTimeout(() => {
+    document.getElementById('boot').style.display='none';
+    ['hud','modes','hint','nav'].forEach(id=>document.getElementById(id).classList.add('on'));
+    document.querySelectorAll('.corn').forEach(c=>c.classList.add('on'));
+  }, 850);
+}
+
+// ══════════════════════════════════════════
+// THREE.JS
+// ══════════════════════════════════════════
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene    = new THREE.Scene();
+scene.background = new THREE.Color(0x000000); // Negro absoluto
+
+// Crear un campo de estrellas
+const starGeometry = new THREE.BufferGeometry();
+const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+const starVertices = [];
+for (let i = 0; i < 10000; i++) {
+  const x = (Math.random() - 0.5) * 2000;
+  const y = (Math.random() - 0.5) * 2000;
+  const z = (Math.random() - 0.5) * 2000;
+  starVertices.push(x, y, z);
+}
+starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+const stars = new THREE.Points(starGeometry, starMaterial);
+scene.add(stars);
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.005, 200);
+camera.position.set(0,0.03,4.0);
+camera.lookAt(0,-0.2,0);
+// Polvo espacial (partículas más grandes y lentas)
+const dustGeom = new THREE.BufferGeometry();
+const dustMat = new THREE.PointsMaterial({ 
+  color: 0xffffff, 
+  size: 0.15, 
+  transparent: true, 
+  opacity: 0.3 
+});
+const dustCoords = [];
+for (let i = 0; i < 1000; i++) {
+  dustCoords.push((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100);
+}
+dustGeom.setAttribute('position', new THREE.Float32BufferAttribute(dustCoords, 3));
+const dust = new THREE.Points(dustGeom, dustMat);
+scene.add(dust);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const kl = new THREE.DirectionalLight(0xfff0dd,1.5); kl.position.set(3,5,4); kl.castShadow=true; kl.shadow.mapSize.set(2048,2048); scene.add(kl);
+const fl = new THREE.DirectionalLight(0x4fc3f7,0.5); fl.position.set(-4,2,-3); scene.add(fl);
+const rl = new THREE.DirectionalLight(0xc8a96e,0.5); rl.position.set(0,-2,-5); scene.add(rl);
+scene.add(new THREE.DirectionalLight(0x334466,0.3)).position.set(0,-4,0);
+
+// Ground + grid
+const gndMaterial = new THREE.ShadowMaterial({ opacity: 0.4 }); 
+const gnd = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), gndMaterial);
+gnd.rotation.x = -Math.PI / 2;
+gnd.position.y = -4.08; 
+gnd.receiveShadow = true;
+scene.add(gnd);
+
+const grid = new THREE.GridHelper(20, 40, 0x4fc3f7, 0x1a2030); 
+grid.position.y = -4.07; 
+grid.material.opacity = 0.2; 
+grid.material.transparent = true; 
+scene.add(grid);
+
+// ══ LOAD MODEL ══
+const ls = document.createElement('script');
+ls.src='https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+document.head.appendChild(ls);
+ls.onload = () => {
+  new THREE.GLTFLoader().load('model.glb',
+    gltf => {
+      const mdl = gltf.scene;
+      const box = new THREE.Box3().setFromObject(mdl);
+      const cen = box.getCenter(new THREE.Vector3());
+      const siz = box.getSize(new THREE.Vector3());
+      const sc  = 2.4/Math.max(siz.x,siz.y,siz.z);
+      mdl.scale.setScalar(sc);
+      mdl.position.sub(cen.multiplyScalar(sc));
+      mdl.traverse(c=>{ if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
+      scene.add(mdl);
+      modelReady=true; tryReady();
+      buildUI();
+    },
+    xhr=>{ if(xhr.total){ const p=Math.round(xhr.loaded/xhr.total*60); document.getElementById('bfill').style.width=p+'%'; document.getElementById('blbl').textContent=`LOADING 3D MODEL… ${p}%`; } },
+    ()=>{ buildPlaceholder(); modelReady=true; tryReady(); buildUI(); }
+  );
+};
+
+function buildPlaceholder(){
+  const g=new THREE.Group();
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.4,.9,1.4),new THREE.MeshStandardMaterial({color:0x8b6914,roughness:.6,metalness:.4})),{castShadow:true}));
+  const kd=new THREE.Mesh(new THREE.BoxGeometry(.55,.8,.7),new THREE.MeshStandardMaterial({color:0x555c66,roughness:.7,metalness:.5}));
+  kd.position.set(1.1,0,0); g.add(kd); scene.add(g);
+}
+
+// ══ ORBIT STATE ══
+let target = new THREE.Vector3(0, -4.0, 0); // Apunta al centro del modelo (y=-4)
+let sph = {theta: 0.3, phi: 1.2, r: 1.25};   // r es la distancia. 0.8 te deja cerca.
+let sphT = {...sph};
+let tgtT = target.clone();
+let dragging=false, rDrag=false, prevM={x:0,y:0};
+let autoRot = true;
+
+function applyOrbit(){
+  camera.position.set(
+    target.x + sph.r*Math.sin(sph.phi)*Math.sin(sph.theta),
+    target.y + sph.r*Math.cos(sph.phi),
+    target.z + sph.r*Math.sin(sph.phi)*Math.cos(sph.theta)
+  );
+  camera.lookAt(target);
+}
+
+// ══ FLY STATE ══
+let flyMode=false, flyYaw=0, flyPitch=0, flyLocked=false;
+const keys={};
+const FLY_SPD=0.015, FLY_SENS=0.0018;
+function setMode(m){
+  flyMode = m==='fly';
+  document.getElementById('borbit').classList.toggle('on',!flyMode);
+  document.getElementById('bfly').classList.toggle('on', flyMode);
+  document.getElementById('xhair').classList.toggle('on', flyMode);
+  document.getElementById('hint').classList.toggle('fly', flyMode);
+  if(flyMode){
+    const d=new THREE.Vector3(); camera.getWorldDirection(d);
+    flyYaw=Math.atan2(-d.x,-d.z); flyPitch=Math.asin(Math.max(-1,Math.min(1,d.y)));
+    canvas.requestPointerLock();
+  } else {
+    document.exitPointerLock();
+    const off=camera.position.clone().sub(target);
+    sph.r=off.length();
+    sph.phi=Math.acos(Math.max(-1,Math.min(1,off.y/sph.r)));
+    sph.theta=Math.atan2(off.x,off.z);
+    sphT={...sph};
+  }
+}
+
+document.addEventListener('pointerlockchange',()=>{
+  flyLocked = document.pointerLockElement===canvas;
+  if(!flyLocked && flyMode) setMode('orbit');
+});
+canvas.addEventListener('click',()=>{ if(flyMode&&!flyLocked) canvas.requestPointerLock(); });
+document.addEventListener('mousemove',e=>{
+  if(!flyMode||!flyLocked) return;
+  flyYaw  -= e.movementX*FLY_SENS;
+  flyPitch -= e.movementY*FLY_SENS;
+  flyPitch = Math.max(-1.4,Math.min(1.4,flyPitch));
+});
+document.addEventListener('keydown',e=>{ keys[e.code]=true; if(e.code==='Escape'&&flyMode) setMode('orbit'); });
+document.addEventListener('keyup',  e=>{ keys[e.code]=false; });
+
+// ══ ORBIT MOUSE ══
+canvas.addEventListener('mousedown',e=>{
+  if(flyMode) return;
+  dragging=true; rDrag=e.button===2; prevM={x:e.clientX,y:e.clientY};
+  canvas.style.cursor='grabbing'; autoRot=false;
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+window.addEventListener('mousemove',e=>{
+  if(!dragging||flyMode) return;
+  const dx=e.clientX-prevM.x, dy=e.clientY-prevM.y;
+  prevM={x:e.clientX,y:e.clientY};
+  if(rDrag){
+    const ps=0.003*sph.r, right=new THREE.Vector3();
+    camera.getWorldDirection(right); right.cross(camera.up).normalize();
+    tgtT.addScaledVector(right,-dx*ps); tgtT.addScaledVector(camera.up,dy*ps);
+  } else {
+    sphT.theta -= dx*0.007;
+    sphT.phi = Math.max(0.08,Math.min(Math.PI-0.08, sphT.phi + dy*0.007)); // +dy = inverted
+  }
+});
+window.addEventListener('mouseup',()=>{ dragging=false; canvas.style.cursor='default'; });
+canvas.addEventListener('wheel',e=>{
+  if(flyMode) return; e.preventDefault();
+  sphT.r = Math.max(0.25,Math.min(8.0,sphT.r+e.deltaY*0.0015));
+  autoRot=false;
+},{passive:false});
+
+// Touch
+let lt=[];
+canvas.addEventListener('touchstart',e=>{ lt=[...e.touches]; autoRot=false; });
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault(); if(flyMode) return;
+  if(e.touches.length===1){
+    const dx=e.touches[0].clientX-lt[0].clientX, dy=e.touches[0].clientY-lt[0].clientY;
+    sphT.theta-=dx*0.007; sphT.phi=Math.max(0.08,Math.min(Math.PI-0.08,sphT.phi+dy*0.007));
+  } else if(e.touches.length===2){
+    const pd=Math.hypot(lt[1].clientX-lt[0].clientX,lt[1].clientY-lt[0].clientY);
+    const cd=Math.hypot(e.touches[1].clientX-e.touches[0].clientX,e.touches[1].clientY-e.touches[0].clientY);
+    sphT.r=Math.max(0.25,Math.min(8.0,sphT.r-(cd-pd)*0.015));
+  }
+  lt=[...e.touches];
+},{passive:false});
+
+// ══ HOTSPOT ZOOM ══
+let activeHS=null;
+let animTo=null, animP=1;
+let animFP=new THREE.Vector3(), animFT=new THREE.Vector3();
+
+function buildUI(){
+  const hc=document.getElementById('hotspots');
+  const nc=document.getElementById('nav');
+  HS_DATA.forEach(h=>{
+    h.v3p=new THREE.Vector3(h.pos.x,h.pos.y,h.pos.z);
+    h.v3c=new THREE.Vector3(h.cam.x,h.cam.y,h.cam.z);
+    h.v3t=new THREE.Vector3(h.tgt.x,h.tgt.y,h.tgt.z);
+    // hotspot
+    const el=document.createElement('div');
+    el.className='hs'; el.id='hs'+h.id;
+    el.innerHTML=`<span class="n">${h.id}</span>`;
+    el.addEventListener('click',()=>zoomTo(h));
+    hc.appendChild(el); h.el=el;
+    // nav dot
+    const nd=document.createElement('div');
+    nd.className='nd'; nd.id='nd'+h.id;
+    nd.innerHTML=`<span class="nl">${h.label}</span>`;
+    nd.addEventListener('click',()=>zoomTo(h));
+    nc.appendChild(nd);
+  });
+}
+
+function zoomTo(h){
+  if(flyMode) setMode('orbit');
+  if(activeHS){ document.getElementById('hs'+activeHS.id)?.classList.remove('on'); document.getElementById('nd'+activeHS.id)?.classList.remove('on'); }
+  activeHS=h;
+  document.getElementById('hs'+h.id)?.classList.add('on');
+  document.getElementById('nd'+h.id)?.classList.add('on');
+  document.getElementById('pn').textContent=`NODE 0${h.id}`;
+  document.getElementById('pt').textContent=h.label;
+  document.getElementById('pb').textContent=h.body;
+  document.getElementById('panel').classList.add('on');
+  animTo={pos:h.v3c.clone(),tgt:h.v3t.clone()};
+  animFP=camera.position.clone(); animFT=target.clone();
+  animP=0; autoRot=false;
+}
+
+function closePanel(){
+  document.getElementById('panel').classList.remove('on');
+  if(activeHS){ document.getElementById('hs'+activeHS.id)?.classList.remove('on'); document.getElementById('nd'+activeHS.id)?.classList.remove('on'); activeHS=null; }
+}
+
+function ease(t){ return t<.5?2*t*t:-1+(4-2*t)*t; }
+
+function toScreen(v) {
+    const vector = v.clone();
+    vector.project(camera);
+
+    // Mapeo exacto a los píxeles del canvas
+    const x = (vector.x + 1) * window.innerWidth / 2;
+    const y = -(vector.y - 1) * window.innerHeight / 2;
+
+    return {
+        x: x,
+        y: y,
+        // IMPORTANTE: vector.z < 1 significa que está frente a la cámara
+        visible: vector.z < 1 
+    };
+}
+
+// ══ RENDER LOOP ══
+const clock=new THREE.Clock();
+const L=(a,b,t)=>a+(b-a)*t;
+
+function tick(){
+  requestAnimationFrame(tick);
+  const dt=Math.min(clock.getDelta(),.05);
+
+  if (stars) {
+    stars.rotation.y += 0.0001; // Giro lento
+    stars.rotation.x += 0.00005;
+    dust.rotation.y -= 0.0003;
+  }
+
+  if(!flyMode){
+    if(autoRot) sphT.theta+=dt*0.10;
+    if(animTo && animP<1){
+      animP=Math.min(1,animP+dt*1.6);
+      const t=ease(animP);
+      camera.position.lerpVectors(animFP,animTo.pos,t);
+      target.lerpVectors(animFT,animTo.tgt,t);
+      camera.lookAt(target);
+      if(animP>=1){
+        const off=camera.position.clone().sub(target);
+        sph.r=off.length(); sph.phi=Math.acos(Math.max(-1,Math.min(1,off.y/sph.r)));
+        sph.theta=Math.atan2(off.x,off.z); sphT={...sph}; tgtT.copy(target); animTo=null;
+      }
+    } else {
+      const s=0.08;
+      sph.theta=L(sph.theta,sphT.theta,s); sph.phi=L(sph.phi,sphT.phi,s); sph.r=L(sph.r,sphT.r,s);
+      target.lerp(tgtT,s); applyOrbit();
+    }
+  } else {
+    const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(flyPitch,flyYaw,0,'YXZ'));
+    camera.quaternion.copy(q);
+    const fwd  =new THREE.Vector3(0,0,-1).applyQuaternion(q);
+    const right=new THREE.Vector3(1,0, 0).applyQuaternion(q);
+    const turbo=(keys['ShiftLeft']||keys['ShiftRight'])?3:1;
+    const spd=FLY_SPD*turbo;
+    if(keys['KeyW'])   camera.position.addScaledVector(fwd, spd);
+    if(keys['KeyS'])   camera.position.addScaledVector(fwd,-spd);
+    if(keys['KeyA'])   camera.position.addScaledVector(right,-spd);
+    if(keys['KeyD'])   camera.position.addScaledVector(right, spd);
+    if(keys['Space'])  camera.position.y+=FLY_SPD;
+    if(keys['KeyQ']||keys['ControlLeft']) camera.position.y-=FLY_SPD;
+  }
+
+  // Update hotspot positions
+  HS_DATA.forEach(h=>{
+    if(!h.el||!h.v3p) return;
+    const s=toScreen(h.v3p);
+    h.el.style.left=s.x+'px'; h.el.style.top=s.y+'px';
+    h.el.style.display=s.behind?'none':'flex';
+  });
+
+  renderer.render(scene,camera);
+}
+
+// ══ RESIZE ══
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+// ══ START ══
+runBoot();
+tick();
+</script>
+</body>
+</html>
